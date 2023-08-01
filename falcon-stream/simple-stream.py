@@ -12,7 +12,8 @@ print(f"Loading {model_name}")
 load_start = time.time()
 
 model = AutoModelForCausalLM.from_pretrained(
-    model_name, device_map="auto", torch_dtype=torch.bfloat16, trust_remote_code=True)
+    model_name, device_map="auto", torch_dtype=torch.bfloat16, trust_remote_code=True
+)
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 
 load_end = time.time()
@@ -25,18 +26,14 @@ print("Generating inputs...")
 gen_start = time.time()
 
 # Create the inputs
-inputs = tokenizer(query, return_tensors="pt",
-                   return_token_type_ids=False).to(device)
+inputs = tokenizer(query, return_tensors="pt", return_token_type_ids=False).to(device)
 
 # Steam the inputs
 streamer = TextStreamer(tokenizer=tokenizer, skip_prompt=True)
 
 print("Generating outputs...")
 outputs = model.generate(
-    **inputs,
-    streamer=streamer,
-    eos_token_id=tokenizer.eos_token_id,
-    max_new_tokens=600
+    **inputs, streamer=streamer, eos_token_id=tokenizer.eos_token_id, max_new_tokens=600
 )
 
 print("Decoding outputs")
