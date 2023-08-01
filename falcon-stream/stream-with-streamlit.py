@@ -8,28 +8,37 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 model_name = "tiiuae/falcon-7b-instruct"  # "cerebras/btlm-3b-8k-base"
 
-model = None
-tokenizer = None
 
-
-def load():
-    global model, tokenizer
-
-    # Load the model
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name, device_map="auto", torch_dtype=torch.bfloat16, trust_remote_code=True
+# Load the model
+@st.cache_resource
+def load_model():
+    return AutoModelForCausalLM.from_pretrained(
+        model_name,
+        device_map="auto",
+        torch_dtype=torch.bfloat16,
+        trust_remote_code=True,
     )
 
-    # Load the tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
 
+model = load_model()
+
+
+# Load the tokenizer
+@st.cache_resource
+def load_tokenizer():
+    return AutoTokenizer.from_pretrained(model_name)
+
+
+tokenizer = load_tokenizer()
 
 
 def generate(query, container):
     global model, tokenizer
 
     # Create the inputs
-    inputs = tokenizer(query, return_tensors="pt", return_token_type_ids=False).to(device)
+    inputs = tokenizer(query, return_tensors="pt", return_token_type_ids=False).to(
+        device
+    )
 
     # Steam the inputs
     streamer = TextIteratorStreamer(tokenizer=tokenizer, skip_prompt=True)
@@ -43,7 +52,7 @@ def generate(query, container):
 
     text = ""
 
-    # Stream the text
+    # Stream the text to streamlit
     for token in streamer:
         container.empty()
         text += token
@@ -53,18 +62,18 @@ def generate(query, container):
 def main():
     st.title("Streaming Demo")
 
-    st.write("Ask a question below: ")
+    st.write(f"Using model: {model_name}")
+    st.write("Ask any question below: ")
+
+    # The user query
     query = st.text_input("Ask a question")
 
+    # Container to stream the text to
     container = st.empty()
 
     if query and query != "":
-        load()
-
         generate(query, container)
-
 
 
 if __name__ == "__main__":
     main()
-
