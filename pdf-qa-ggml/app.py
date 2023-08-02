@@ -4,11 +4,12 @@ from uuid import uuid4 as uuid
 import streamlit as st
 from threading import Thread
 from pypdf import PdfReader
-from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
+from ctransformers import AutoModelForCausalLM
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-model_name = "tiiuae/falcon-7b-instruct"
+model_dir = 'models/'
+model_name = "ggml-model-gpt4all-falcon-q4_0.bin"
 
 # Create a database connection
 @st.cache_resource
@@ -28,17 +29,12 @@ collection = get_collection()
 @st.cache_resource
 def get_model():
     return AutoModelForCausalLM.from_pretrained(
-        model_name, device_map="auto", torch_dtype=torch.bfloat16, trust_remote_code=True
+        model_path_or_repo_id=f"{model_dir}{model_name}", model_type="falcon"
     )
 
 model = get_model()
+model.config.stream = True
 
-# Create a tokenizer
-@st.cache_resource
-def get_tokenizer():
-    return AutoTokenizer.from_pretrained(model_name)
-
-tokenizer = get_tokenizer()
 
 # Chunk the text
 def get_chunks(seq, size, overlap):
@@ -67,27 +63,15 @@ def add_pdf(pdf_file):
 
 # Generate the response
 def generate(query, container):
-    global model, tokenizer
+    global model
 
     # Create the inputs
-    inputs = tokenizer(query, return_tensors="pt", return_token_type_ids=False).to(device)
-
-    # Steam the inputs
-    streamer = TextIteratorStreamer(tokenizer=tokenizer, skip_prompt=True)
-
-    # Create the generate function kwargs
-    gen_kwargs = dict(inputs, streamer=streamer, max_new_tokens=500)
-
-    # Create a new thread to do non-blocking generation
-    thread = Thread(target=model.generate, kwargs=gen_kwargs)
-    thread.start()
+    inputs = model.tokenize(query)
 
     text = ""
-
-    # Stream the text
-    for token in streamer:
+    for token in model.generate(inputs):
         container.empty()
-        text += token
+        text += model.detokenize(token)
         container.write(text)
 
 
@@ -113,7 +97,7 @@ def main():
         # Query the database for results
         result = collection.query(query_texts=query, n_results=2)
 
-        st.write("Source:")
+        st.write("Sources:")
 
         if result is None:
             return
@@ -122,7 +106,7 @@ def main():
             with st.expander(f"Source {i}"):
 
                 st.write(f"Source: {result['metadatas'][0][i]['source']}, Page: {result['metadatas'][0][i]['page']}")
-                st.write("Texte:")
+                st.write("Text:")
                 st.write(result["documents"][0][i])
                 st.write(f"Distance: {result['distances'][0][i]}")
 
