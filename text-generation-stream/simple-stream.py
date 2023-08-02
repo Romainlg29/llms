@@ -7,38 +7,30 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 model_name = "tiiuae/falcon-7b-instruct"  # "cerebras/btlm-3b-8k-base"
 
-# Load the model & tokenizer
-print(f"Loading {model_name}")
-load_start = time.time()
-
+# Load the model
 model = AutoModelForCausalLM.from_pretrained(
     model_name, device_map="auto", torch_dtype=torch.bfloat16, trust_remote_code=True
 )
-tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-load_end = time.time()
-print("Loaded in ", load_end - load_start, " seconds")
+# Load the tokenizer
+tokenizer = AutoTokenizer.from_pretrained(model_name)
 
 # Prompt
 query = "In 10 points, tell me why France is one of the best country."
 
-print("Generating inputs...")
-gen_start = time.time()
-
 # Create the inputs
 inputs = tokenizer(query, return_tensors="pt", return_token_type_ids=False).to(device)
 
-# Steam the inputs
+# Steam the inputs to the stdout
 streamer = TextStreamer(tokenizer=tokenizer, skip_prompt=True)
 
-print("Generating outputs...")
+# Generate the outputs
 outputs = model.generate(
     **inputs, streamer=streamer, eos_token_id=tokenizer.eos_token_id, max_new_tokens=600
 )
 
-print("Decoding outputs")
+# Decode the outputs
 text = tokenizer.batch_decode(outputs, skip_special_tokens=True)
 
-gen_end = time.time()
-print("Generated in ", gen_end - gen_start, " seconds")
+# Print the outputs at the end
 print(text[0])

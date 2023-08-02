@@ -63,10 +63,9 @@ def main():
     st.title("Streaming Demo")
 
     st.write(f"Using model: {model_name}")
-    st.write("Ask any question below: ")
 
     # The user query
-    query = st.text_input("Ask a question")
+    query = st.text_input("Ask a question:")
 
     # Container to stream the text to
     container = st.empty()
