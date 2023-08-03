@@ -76,7 +76,7 @@ def generate(query, container):
     streamer = TextIteratorStreamer(tokenizer=tokenizer, skip_prompt=True)
 
     # Create the generate function kwargs
-    gen_kwargs = dict(inputs, streamer=streamer, max_new_tokens=500)
+    gen_kwargs = dict(inputs, streamer=streamer, max_new_tokens=500, temperature=.05)
 
     # Create a new thread to do non-blocking generation
     thread = Thread(target=model.generate, kwargs=gen_kwargs)
@@ -126,8 +126,7 @@ def main():
                 st.write(result["documents"][0][i])
                 st.write(f"Distance: {result['distances'][0][i]}")
 
-
-        prompt = f"From the context that you will be given, answer the following question: '{query}'. Context: {result['documents'][0]}"
+        prompt = f"You are a smart assistant designed to help high school teachers come up with reading comprehension questions. \nGiven a piece of text, you must come up with a question and answer pair that can be used to test a student's reading comprehension abilities. \nWhen coming up with this question/answer pair, you must respond in the following format: 'Question: <question> Answer: <answer>' \nQuestion: {query} \nDocuments: {result['documents']}"
 
         generate(prompt, container)
 

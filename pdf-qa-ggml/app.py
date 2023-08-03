@@ -2,7 +2,6 @@ import torch
 import chromadb
 from uuid import uuid4 as uuid
 import streamlit as st
-from threading import Thread
 from pypdf import PdfReader
 from ctransformers import AutoModelForCausalLM
 
@@ -33,7 +32,6 @@ def get_model():
     )
 
 model = get_model()
-model.config.stream = True
 
 
 # Chunk the text
@@ -62,17 +60,15 @@ def add_pdf(pdf_file):
 
 
 # Generate the response
-def generate(query, container):
+@st.cache_data
+def generate(query, _container):
     global model
 
-    # Create the inputs
-    inputs = model.tokenize(query)
-
     text = ""
-    for token in model.generate(inputs):
-        container.empty()
-        text += model.detokenize(token)
-        container.write(text)
+    for token in model(query, stream=True):
+        _container.empty()
+        text += token
+        _container.write(text)
 
 
 def main():
@@ -111,7 +107,7 @@ def main():
                 st.write(f"Distance: {result['distances'][0][i]}")
 
 
-        prompt = f"From the context that you will be given, answer the following question: '{query}'. Context: {result['documents'][0]}"
+        prompt = f"You are a smart assistant designed to help high school teachers come up with reading comprehension questions. \nGiven a piece of text, you must come up with a question and answer pair that can be used to test a student's reading comprehension abilities. \nWhen coming up with this question/answer pair, you must respond in the following format: 'Question: <question> Answer: <answer>' \nQuestion: {query} \nDocuments: {result['documents']}"
 
         generate(prompt, container)
 
