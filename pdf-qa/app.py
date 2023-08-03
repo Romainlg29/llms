@@ -49,6 +49,11 @@ def get_chunks(seq, size, overlap):
         yield seq[i:i + size]
 
 
+# Split the text into paragraphs
+def to_paragraphs(text):
+    return list(filter(lambda x : x != '', text.split('\n\n')))
+
+
 # Add a pdf to Chroma
 @st.cache_resource
 def add_pdf(pdf_file):
@@ -56,14 +61,23 @@ def add_pdf(pdf_file):
 
     for page in pdf.pages:
 
-        # Create chunks of the pdf
-        chunks = get_chunks(page.extract_text(), 1024, 64)
+        # Create chunks of the pdf on paragraph to keep a maximum of context
+        paragraphs = to_paragraphs(page.extract_text())
+
+        # if the paragraph is too long, split it into chunks
+        chunks = []
+        for paragraph in paragraphs:
+            chunks.extend(list(get_chunks(paragraph, 1000, 100)))
 
         for chunk in chunks:
 
+            # skip the small chunks with less than 10 characters
+            # this is to avoid adding data with no context
+            if len(chunk) < 10:
+                continue
+
             # Add the chunks to the db
             collection.add(documents=[chunk], metadatas=[{"source": pdf_file.name, "page": page.page_number}], ids=[str(uuid())])
-
 
 # Generate the response
 def generate(query, container):
