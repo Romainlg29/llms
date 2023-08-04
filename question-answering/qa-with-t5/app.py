@@ -19,7 +19,7 @@ prompt = "Answer the following question: What's Romain's favorite color? Context
 inputs = tokenizer(prompt, return_tensors="pt").input_ids.to(device)
 
 # Create a streamer
-streamer = TextIteratorStreamer(tokenizer=tokenizer, skip_prompt=True)
+streamer = TextIteratorStreamer(tokenizer=tokenizer, skip_prompt=True, skip_special_tokens=True)
 
 # Create the args
 gen_kwargs = dict(inputs=inputs, streamer=streamer, max_new_tokens=500)
@@ -30,8 +30,4 @@ thread.start()
 
 # Iterate over the streamer
 for text in streamer:
-
-    if text is None or text == "":
-        continue
-
     print(text)
